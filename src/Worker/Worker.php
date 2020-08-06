@@ -35,6 +35,11 @@ class Worker
      */
     public function start(): void
     {
+		pcntl_async_signals(TRUE);
+		pcntl_signal(SIGTERM, [$this, 'terminalSignalHandler']);
+        pcntl_signal(SIGINT, [$this, 'terminalSignalHandler']);
+        pcntl_signal(SIGQUIT, [$this, 'terminalSignalHandler']);
+
         while (true) {
             $job = $this->jobRepository->getNextJob();
 
@@ -49,4 +54,9 @@ class Worker
             }
         }
     }
+
+    protected function terminalSignalHandler(int $signal): void
+    {
+        exit(0);
+	}
 }

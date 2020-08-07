@@ -2,8 +2,6 @@
 
 namespace App\Command;
 
-use App\Repository\JobRepository;
-use App\Worker\Caller;
 use App\Worker\Worker;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -17,14 +15,24 @@ class StartWorkerCommand extends Command
 {
     protected static $defaultName = 'app:start-worker';
 
-    /** @var JobRepository  */
-    private $jobRepository;
+    /** @var Worker  */
+    protected $worker;
 
-    public function __construct(JobRepository $jobRepository)
+    public function __construct(Worker $worker)
     {
-        $this->jobRepository = $jobRepository;
-
+        $this->worker = $worker;
+        $this->setSignalHandlers();
         parent::__construct();
+    }
+
+    protected function setSignalHandlers()
+    {
+        pcntl_async_signals(true);
+        pcntl_signal(SIGTERM, [$this, 'terminalSignalHandler']);
+        pcntl_signal(SIGINT, [$this, 'terminalSignalHandler']);
+        pcntl_signal(SIGQUIT, [$this, 'terminalSignalHandler']);
+        pcntl_signal(SIGHUP, [$this, 'terminalSignalHandler']);
+        pcntl_signal(SIGUSR1, [$this, 'terminalSignalHandler']);
     }
 
     protected function configure()
@@ -35,9 +43,14 @@ class StartWorkerCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $worker = new Worker($this->jobRepository, new Caller());
-        $output->writeln("Worker started");
-        $worker->start();
+        $output->writeln("Worker starting...");
+        $this->worker->start();
         return Command::SUCCESS;
+    }
+
+    protected function terminalSignalHandler(OutputInterface $output): void
+    {
+        $output->writeln("Worker stopping...");
+        exit(0);
     }
 }

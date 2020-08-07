@@ -11,13 +11,16 @@ use App\Repository\JobRepository;
 class Worker
 {
     /** @var Caller */
-    protected $caller;
+    private $caller;
 
     /** @var JobRepository */
     private $jobRepository;
 
     /** @var int ms */
-    protected const SLEEP_TIME_IF_NO_RECORDS = 100000;
+    private const SLEEP_TIME_IF_NO_RECORDS = 100000;
+
+    /** @var bool  */
+    private $stopFlag = false;
 
     /**
      * Worker constructor.
@@ -35,12 +38,13 @@ class Worker
      */
     public function start(): void
     {
-		pcntl_async_signals(TRUE);
-		pcntl_signal(SIGTERM, [$this, 'terminalSignalHandler']);
-        pcntl_signal(SIGINT, [$this, 'terminalSignalHandler']);
-        pcntl_signal(SIGQUIT, [$this, 'terminalSignalHandler']);
-
         while (true) {
+
+            if($this->stopFlag)
+            {
+                break;
+            }
+
             $job = $this->jobRepository->getNextJob();
 
             if ($job) {
@@ -55,8 +59,11 @@ class Worker
         }
     }
 
-    protected function terminalSignalHandler(int $signal): void
+    /**
+     * Stops worker
+     */
+    public function stop(): void
     {
-        exit(0);
-	}
+        $this->stopFlag = true;
+    }
 }
